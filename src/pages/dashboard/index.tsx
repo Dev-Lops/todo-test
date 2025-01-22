@@ -1,27 +1,10 @@
-import { GetServerSideProps } from "next";
-import { getSession } from "next-auth/react";
-import { prisma } from "../../lib/prisma";
+import { useAuth } from "../../contexts/AuthContext";
 import ClockSection from "../../components/ClockSection";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-
-type Task = {
-  id: string;
-  title: string;
-  completed: boolean;
-};
-
-type DashboardProps = {
-  session: {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      image?: string;
-    };
-  };
-  initialTasks: Task[];
-};
+import { useRouter } from 'next/router';
+import { TaskService } from '../../services/taskService';
+import { Task } from '../../types/task';
 
 type TopBarProps = {
   time: string;
@@ -41,37 +24,6 @@ type TaskItemProps = {
 
 type TaskListProps = {
   initialTasks: Task[];
-};
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const session = await getSession(context);
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  const tasks = await prisma.task.findMany({
-    where: {
-      userId: session.user.id
-    },
-    select: {
-      id: true,
-      title: true,
-      completed: true,
-    },
-  });
-
-  return {
-    props: {
-      session,
-      initialTasks: tasks,
-    },
-  };
 };
 
 const TopBar = ({ time }: TopBarProps) => {
@@ -137,20 +89,16 @@ const TaskItem = ({ task, checked, onToggle, onDelete }: TaskItemProps) => {
 const TaskList = ({ initialTasks }: TaskListProps) => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks || []);
   const [newTask, setNewTask] = useState("");
+  const taskService = TaskService.getInstance();
 
   const toggleTask = async (taskId: string) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}/toggle`, {
-        method: "PUT",
-      });
-
-      if (response.ok) {
-        setTasks((tasks) =>
-          tasks.map((task) =>
-            task.id === taskId ? { ...task, completed: !task.completed } : task
-          )
-        );
-      }
+      await taskService.toggleTask(taskId);
+      setTasks((tasks) =>
+        tasks.map((task) =>
+          task.id === taskId ? { ...task, completed: !task.completed } : task
+        )
+      );
     } catch (error) {
       console.error("Error toggling task:", error);
     }
@@ -158,14 +106,8 @@ const TaskList = ({ initialTasks }: TaskListProps) => {
 
   const deleteTask = async (taskId: string) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        setTasks((prev) => prev.filter((task) => task.id !== taskId));
-      }
+      await taskService.deleteTask(taskId);
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
     }
@@ -175,20 +117,11 @@ const TaskList = ({ initialTasks }: TaskListProps) => {
     if (!newTask.trim()) return;
 
     try {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: 'include',
-        body: JSON.stringify({ title: newTask }),
+      const task = await taskService.createTask({
+        title: newTask,
       });
-
-      if (response.ok) {
-        const task: Task = await response.json();
-        setTasks((prev) => [...prev, task]);
-        setNewTask("");
-      }
+      setTasks((prev) => [...prev, task]);
+      setNewTask("");
     } catch (error) {
       console.error("Error adding task:", error);
     }
@@ -230,11 +163,36 @@ const TaskList = ({ initialTasks }: TaskListProps) => {
   );
 };
 
-export default function Dashboard({ session, initialTasks }: DashboardProps) {
-  const userName = session.user.name || "Guest";
-  const profileImage = session.user.image || "/Ellipse.png";
+export default function Dashboard() {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [time, setTime] = useState("00:00");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const greeting = new Date().getHours() < 12 ? "Good Morning" : "Good Afternoon";
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/signin');
+      return;
+    }
+
+    const fetchTasks = async () => {
+      try {
+        if (isAuthenticated && user) {
+          const taskService = TaskService.getInstance();
+          const tasksData = await taskService.getTasks();
+          setTasks(tasksData);
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [isAuthenticated, user, router]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -242,18 +200,29 @@ export default function Dashboard({ session, initialTasks }: DashboardProps) {
       setTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     };
 
-    updateTime(); // Atualiza imediatamente
+    updateTime();
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
   return (
     <div className="bg-[#F0F4F3] h-screen flex flex-col items-center py-4 w-[430px] mx-auto border border-[#50C2C9]">
       <TopBar time={time} />
-      <ProfileSection userName={userName} profileImage={profileImage} />
+      <ProfileSection
+        userName={user.name}
+        profileImage="/Ellipse.png"
+      />
       <ClockSection greeting={greeting} />
-      <TaskList initialTasks={initialTasks} />
+      <TaskList initialTasks={tasks} />
     </div>
   );
 }

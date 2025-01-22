@@ -1,28 +1,33 @@
 import { useEffect, useRef } from "react";
+import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
 type ClockSectionProps = {
   greeting: string;
+  onLogout?: () => void;
 };
 
 const CLOCK_NUMBERS = [
-  { number: 1, left: 75, top: 8 },
-  { number: 2, left: 93.3, top: 26.3 },
-  { number: 3, left: 100, top: 50 },
-  { number: 4, left: 93.3, top: 75 },
-  { number: 5, left: 75, top: 93.3 },
-  { number: 6, left: 50, top: 100 },
-  { number: 7, left: 25, top: 93.3 },
-  { number: 8, left: 6.7, top: 75 },
-  { number: 9, left: 0, top: 50 },
-  { number: 10, left: 6.7, top: 25 },
-  { number: 11, left: 25, top: 6.7 },
-  { number: 12, left: 50, top: 0 },
+  { number: 1, left: 73, top: 10 },
+  { number: 2, left: 90.3, top: 26.3 },
+  { number: 3, left: 95, top: 50 },
+  { number: 4, left: 90.3, top: 70 },
+  { number: 5, left: 75, top: 88.3 },
+  { number: 6, left: 50, top: 95 },
+  { number: 7, left: 25, top: 88.3 },
+  { number: 8, left: 10, top: 72 },
+  { number: 9, left: 4, top: 50 },
+  { number: 10, left: 10, top: 30 },
+  { number: 11, left: 25, top: 13 },
+  { number: 12, left: 50, top: 5 },
 ];
 
-const ClockSection = ({ greeting }: ClockSectionProps) => {
+const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
   const hourRef = useRef<HTMLDivElement>(null);
   const minuteRef = useRef<HTMLDivElement>(null);
   const secondRef = useRef<HTMLDivElement>(null);
+
+  const router = useRouter();
 
   useEffect(() => {
     const updateClock = () => {
@@ -48,14 +53,30 @@ const ClockSection = ({ greeting }: ClockSectionProps) => {
     return () => clearInterval(interval); // Limpa o intervalo ao desmontar
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false });
+      localStorage.removeItem('authToken');
+
+      if (onLogout) {
+        onLogout();
+      }
+
+      router.push('/signin');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      alert('Ocorreu um erro ao fazer logout. Tente novamente.');
+    }
+  };
+
   return (
     <div className="bg-white mt-4 rounded-lg shadow p-4 w-11/12 flex flex-col items-center">
-      <div className="relative w-40 h-40 bg-blue-100 rounded-full flex items-center justify-center">
+      <div className="relative w-52 h-52 bg-blue-100 rounded-full flex items-center justify-center">
         {/* Números do relógio */}
         {CLOCK_NUMBERS.map(({ number, left, top }) => (
           <span
             key={number}
-            className="absolute text-xs font-medium text-gray-800"
+            className="absolute text-xs font-medium text-gray-800 "
             style={{
               left: `${left}%`,
               top: `${top}%`,
@@ -98,6 +119,14 @@ const ClockSection = ({ greeting }: ClockSectionProps) => {
         <div className="absolute w-1 h-1 bg-black rounded-full"></div>
       </div>
       <p className="text-xs font-medium text-black mt-2">{greeting}</p>
+
+      {/* Botão de logout */}
+      <button
+        onClick={handleLogout}
+        className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm"
+      >
+        Sair
+      </button>
     </div>
   );
 };

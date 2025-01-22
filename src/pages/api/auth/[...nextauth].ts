@@ -1,4 +1,4 @@
-import NextAuth, { DefaultSession, AuthOptions } from "next-auth";
+import NextAuth, { AuthOptions, DefaultSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
@@ -7,9 +7,14 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-    } & DefaultSession["user"]
+    } & DefaultSession["user"];
   }
 }
+
+const ERROR_MESSAGES = {
+  INVALID_CREDENTIALS: "Invalid email or password",
+  UNEXPECTED_ERROR: "An unexpected error occurred",
+};
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -24,48 +29,49 @@ export const authOptions: AuthOptions = {
           throw new Error("Email and password are required");
         }
 
-        // Busca o usuário pelo e-mail no banco de dados
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          // Busca o usuário pelo e-mail
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user) {
-          throw new Error("No user found with the provided email");
+          // Verifica se o usuário existe e valida a senha
+          const isPasswordValid =
+            user && (await bcrypt.compare(credentials.password, user.password));
+
+          if (!isPasswordValid) {
+            throw new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+          }
+
+          // Retorna os dados do usuário
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          };
+        } catch (error) {
+          console.error("Error in authorize:", error);
+          throw new Error(ERROR_MESSAGES.UNEXPECTED_ERROR);
         }
-
-        // Valida a senha
-        const isValidPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isValidPassword) {
-          throw new Error("Incorrect password");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
       },
     }),
   ],
   pages: {
-    signIn: "/signin", // Define a página de login personalizada
+    signIn: "/signin", // Página de login personalizada
   },
   session: {
-    strategy: "jwt" as const,
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    jwt: async ({ token, user }) => {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;
       }
       return token;
     },
-    session: async ({ session, token }) => {
+    async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.id as string;
       }

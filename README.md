@@ -1,40 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Dashboard Application
 
-## Getting Started
+## Overview
+This is a task management dashboard application that allows users to manage their daily tasks with a user-friendly interface. The app features a real-time analog clock, task tracking, and user authentication.
 
-First, run the development server:
+## Features
+- **User Authentication:** Secure login system with session-based access control.
+- **Task Management:**
+  - View daily tasks.
+  - Add new tasks.
+  - Toggle task completion status.
+- **Real-Time Analog Clock:** A dynamic analog clock displaying the current time.
+- **Responsive Design:** Mobile-friendly interface.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Tech Stack
+- **Frontend:**
+  - [React](https://reactjs.org/)
+  - [Next.js](https://nextjs.org/)
+  - [TailwindCSS](https://tailwindcss.com/)
+- **Backend:**
+  - [NextAuth.js](https://next-auth.js.org/) for authentication.
+  - [Prisma](https://www.prisma.io/) as the ORM.
+  - RESTful API endpoints for task operations.
+- **Database:**
+  - PostgreSQL.
+
+## Prerequisites
+Ensure you have the following installed on your system:
+- Node.js (v14+)
+- npm, yarn, or pnpm
+- PostgreSQL
+
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-repo-url/dashboard-app.git
+   cd dashboard-app
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+   Or, if you're using `pnpm`:
+   ```bash
+   pnpm install
+   ```
+
+3. Set up the environment variables:
+   Create a `.env` file in the root directory and add the following:
+   ```env
+   DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/database_name"
+   NEXTAUTH_SECRET="your_secret_key"
+   NEXTAUTH_URL="http://localhost:3000"
+   ```
+
+4. Run database migrations:
+   ```bash
+   npx prisma migrate dev
+   ```
+
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   Or, if you're using `pnpm`:
+   ```bash
+   pnpm dev
+   ```
+
+6. Open the app:
+   Navigate to `http://localhost:3000` in your browser.
+
+## Folder Structure
+```
+|-- components
+|   |-- ClockSection.tsx       # Real-time analog clock component
+|   |-- TaskItem.tsx           # Individual task item component
+|-- lib
+|   |-- prisma.ts              # Prisma client instance
+|-- pages
+|   |-- api
+|   |   |-- auth
+|   |   |   |-- [...nextauth].ts  # NextAuth configuration
+|   |   |-- tasks
+|   |       |-- [id]/toggle.ts # Toggle task completion API
+|   |       |-- index.ts       # Create task API
+|   |-- dashboard
+|       |-- index.tsx          # Main dashboard page
+|-- prisma
+|   |-- schema.prisma          # Database schema
+|-- public
+|   |-- default-profile.png    # Default user profile image
+|   |-- clock.png              # Placeholder clock image (if applicable)
+|-- styles
+|   |-- globals.css            # Global TailwindCSS styles
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Endpoints
+### **Authentication**
+- **POST** `/api/auth/[...nextauth]`: Handles user authentication.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+### **Tasks**
+- **GET** `/api/tasks`: Fetch all tasks for the logged-in user.
+- **POST** `/api/tasks`: Add a new task.
+  - Body: `{ "title": "Task Title" }`
+- **PUT** `/api/tasks/{id}/toggle`: Toggle task completion status.
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Usage
+### Add a Task
+1. Enter a task name in the input field.
+2. Click the "Add" button to save the task.
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+### Toggle Task Completion
+1. Click on the checkbox next to a task to mark it as completed or incomplete.
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Real-Time Clock
+The analog clock updates dynamically to reflect the current time.
 
-## Learn More
+## Development Tips
+- Use `npx prisma studio` to visually manage your database.
+- TailwindCSS utility classes are used extensively for styling.
+- All API routes are defined under the `pages/api` folder.
 
-To learn more about Next.js, take a look at the following resources:
+## Contributing
+1. Fork the repository.
+2. Create a new branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add your feature description"
+   ```
+4. Push to the branch:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+5. Open a pull request.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+## License
+This project is licensed under the [MIT License](LICENSE).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Contact
+For inquiries, please contact [your-email@example.com](mailto:your-email@example.com).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
