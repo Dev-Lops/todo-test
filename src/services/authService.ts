@@ -1,16 +1,22 @@
-import { api } from '../lib/api';
-import { SignInData, SignUpData } from '../schemas/auth.schema';
+import { api } from "@/lib/api";
+import { jwtUtils } from "@/lib/jwt";
+import type { SignUpData } from "@/schemas/auth/signUpSchema";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
 }
 
+interface SignInResponse {
+  token: string;
+  user: User;
+}
+
 export class AuthService {
   private static instance: AuthService;
 
-  private constructor() { }
+  private constructor() {} // Impede a instância direta
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -19,50 +25,74 @@ export class AuthService {
     return AuthService.instance;
   }
 
-  async signIn(credentials: SignInData): Promise<{ user: User }> {
+  async signIn(credentials: {
+    email: string;
+    password: string;
+  }): Promise<SignInResponse> {
     try {
-      const response = await api.post<{ user: User; token: string }>('/auth/signin', credentials);
+      const response = await api.post<SignInResponse>(
+        "/api/auth/signin",
+        credentials
+      );
+      const { token, user } = response.data;
 
-      // Armazena o token no localStorage
-      localStorage.setItem('authToken', response.data.token);
-
-      return response.data;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Erro ao fazer login';
-      throw new Error(message);
-    }
-  }
-
-  async signOut(): Promise<void> {
-    try {
-      await api.post('/auth/signout');
-
-      // Remove o token do localStorage
-      localStorage.removeItem('authToken');
-    } catch (error: any) {
-      console.error('Logout error:', error);
-      throw new Error('Erro ao fazer logout');
-    }
-  }
-
-  async getProfile(): Promise<User> {
-    try {
-      const response = await api.get<User>('/auth/me');
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        throw new Error('Sessão expirada');
+      if (typeof window !== "undefined") {
+        localStorage.setItem("authToken", token);
       }
-      throw new Error('Erro ao carregar perfil');
+
+      return { token, user }; // Retorna ambos
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || "Erro ao fazer login");
     }
   }
 
   async signUp(data: SignUpData): Promise<void> {
     try {
-      await api.post('/auth/signup', data);
+      await api.post("/api/auth/signup", data);
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Erro ao criar conta';
-      throw new Error(message);
+      throw new Error(error.response?.data?.message || "Erro ao criar conta");
+    }
+  }
+
+  static async getProfile() {
+    if (typeof window === "undefined") {
+      throw new Error("LocalStorage não está disponível no servidor.");
+    }
+
+    const token = localStorage.getItem("authToken"); // Recupera o token armazenado
+
+    if (!token) {
+      throw new Error("Token ausente. O usuário não está autenticado.");
+    }
+
+    const response = await fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`, // Envia o token no cabeçalho
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao carregar perfil do usuário.");
+    }
+
+    return await response.json(); // Retorna os dados do perfil
+  }
+
+  createToken(user: { id: string; email: string }): string {
+    return jwtUtils.signToken({ userId: user.id, email: user.email }, "1h");
+  }
+
+  verifyToken(token: string): { userId: string; email: string } | null {
+    try {
+      return jwtUtils.verifyToken(token) as { userId: string; email: string };
+    } catch {
+      return null;
+    }
+  }
+
+  signOut(): void {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("authToken");
     }
   }
 }

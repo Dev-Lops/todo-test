@@ -1,60 +1,53 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '../../../lib/prisma';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
-
-const signUpSchema = z.object({
-  email: z.string().email({ message: 'E-mail inválido' }),
-  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres' }),
-  name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres' }),
-});
+import { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
+import { hash } from "bcrypt";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== "POST") {
+    res.setHeader("Allow", ["POST"]);
+    return res.status(405).json({ message: "Método não permitido" });
+  }
+
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res
+      .status(400)
+      .json({ message: "Por favor, forneça nome, email e senha" });
   }
 
   try {
-    const { email, password, name } = signUpSchema.parse(req.body);
-
-    const emailExists = await prisma.user.findUnique({
+    // Verifica se o usuário já existe
+    const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (emailExists) {
-      return res.status(400).json({ message: 'E-mail já cadastrado' });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email já está em uso" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash da senha
+    const hashedPassword = await hash(password, 10);
 
-    const user = await prisma.user.create({
+    // Criação do usuário
+    const newUser = await prisma.user.create({
       data: {
+        name,
         email,
         password: hashedPassword,
-        name,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
       },
     });
 
-    return res.status(201).json(user);
+    res.status(201).json({
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+    });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        message: 'Dados inválidos',
-        errors: error.errors,
-      });
-    }
-
-    console.error('Erro no registro:', error);
-    return res.status(500).json({
-      message: 'Erro interno do servidor',
-    });
+    console.error("Erro ao criar usuário:", error);
+    res.status(500).json({ message: "Erro interno do servidor" });
   }
 }

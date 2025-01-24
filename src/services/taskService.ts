@@ -1,62 +1,39 @@
-import { api } from '../lib/api';
-import { CreateTaskData } from '../schemas/task.schema';
-import { Task } from '../types/task';
+import { api } from "@/lib/api";
+import type { Task } from "@/types/task";
 
 export class TaskService {
-  private static instance: TaskService;
-
-  private constructor() { }
-
-  static getInstance(): TaskService {
-    if (!TaskService.instance) {
-      TaskService.instance = new TaskService();
-    }
-    return TaskService.instance;
-  }
-
-  async createTask(data: CreateTaskData): Promise<Task> {
+  static async getTasks(): Promise<Task[]> {
     try {
-      const response = await api.post<Task>('/tasks', data);
+      const response = await api.get<Task[]>("/api/tasks");
       return response.data;
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Erro ao criar tarefa');
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      return []; // Retorna um array vazio como fallback
     }
   }
 
-  async getTasks(): Promise<Task[]> {
-    try {
-      const response = await api.get<Task[]>('/tasks');
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Erro ao carregar tarefas');
-    }
+  static async createTask(title: string, userId: string) {
+    const response = await api.post("/api/tasks", { title, userId });
+    return response.data;
   }
 
-  async toggleTask(id: string): Promise<void> {
-    try {
-      await api.put(`/tasks/${id}/toggle`); // Alterado de patch para put
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Erro ao atualizar tarefa');
-    }
+  static async updateTask(
+    id: string,
+    updates: Partial<{ title: string; description: string }>
+  ): Promise<Task> {
+    const response = await api.patch<Task>(`/api/tasks/${id}`, updates);
+    return response.data;
   }
 
-  async deleteTask(id: string): Promise<void> {
-    try {
-      await api.delete(`/tasks/${id}`);
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Erro ao excluir tarefa');
+  static async toggleTask(taskId: string, completed: boolean): Promise<void> {
+    if (!taskId) throw new Error("Task ID é obrigatório.");
+    await api.patch(`/api/tasks/${taskId}`, { completed });
+  }
+
+  static async deleteTask(taskId: string): Promise<void> {
+    if (!taskId || typeof taskId !== "string") {
+      throw new Error("Task ID é obrigatório e deve ser uma string.");
     }
+    await api.delete(`/api/tasks/${taskId}`);
   }
 }

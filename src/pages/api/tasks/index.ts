@@ -1,58 +1,42 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { verifyJWT } from '../../../lib/jwt';
-import { prisma } from '../../../lib/prisma';
+import { prisma } from "@/lib/prisma";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Verifica se existe um token nos cookies
-  const token = req.cookies.authToken;
-
-  if (!token) {
-    return res.status(401).json({ message: 'Não autorizado' });
+  if (req.method === "GET") {
+    try {
+      const tasks = await prisma.task.findMany();
+      return res.status(200).json(tasks);
+    } catch (error) {
+      console.error("Erro ao buscar tasks:", error);
+      return res.status(500).json({ message: "Erro ao buscar tarefas." });
+    }
   }
 
-  try {
-    // Verifica o token
-    const payload = verifyJWT(token);
-    if (!payload) {
-      return res.status(401).json({ message: 'Token inválido' });
+  if (req.method === "POST") {
+    const { title, userId } = req.body;
+
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ message: "Título inválido." });
     }
 
-    // Adiciona o userId à requisição
-    const userId = payload.userId;
-
-    // Roteamento baseado no método HTTP
-    switch (req.method) {
-      case 'GET':
-        const tasks = await prisma.task.findMany({
-          where: {
-            userId: userId
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        });
-        return res.status(200).json(tasks);
-
-      case 'POST':
-        const { title, description } = req.body;
-        const newTask = await prisma.task.create({
-          data: {
-            title,
-            description,
-            userId: userId
-          }
-        });
-        return res.status(201).json(newTask);
-
-      default:
-        res.setHeader('Allow', ['GET', 'POST']);
-        return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
+    try {
+      const newTask = await prisma.task.create({
+        data: {
+          title,
+          completed: false,
+          user: { connect: { id: userId } }, // Relaciona com o usuário
+        },
+      });
+      return res.status(201).json(newTask);
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error);
+      return res.status(500).json({ message: "Erro ao criar tarefa." });
     }
-  } catch (error) {
-    console.error('Error in tasks API:', error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
   }
-} 
+
+  res.setHeader("Allow", ["GET", "POST"]);
+  return res.status(405).json({ message: "Método não permitido" });
+}

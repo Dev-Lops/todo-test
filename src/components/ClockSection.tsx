@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 type ClockSectionProps = {
   greeting: string;
@@ -29,6 +29,8 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
 
   const router = useRouter();
 
+  const { signOut } = useAuth();
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -40,10 +42,14 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
         secondRef.current.style.transform = `rotate(${seconds * 6}deg)`;
       }
       if (minuteRef.current) {
-        minuteRef.current.style.transform = `rotate(${minutes * 6 + seconds * 0.1}deg)`;
+        minuteRef.current.style.transform = `rotate(${
+          minutes * 6 + seconds * 0.1
+        }deg)`;
       }
       if (hourRef.current) {
-        hourRef.current.style.transform = `rotate(${hours * 30 + minutes * 0.5}deg)`;
+        hourRef.current.style.transform = `rotate(${
+          hours * 30 + minutes * 0.5
+        }deg)`;
       }
     };
 
@@ -53,25 +59,9 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
     return () => clearInterval(interval); // Limpa o intervalo ao desmontar
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut({ redirect: false });
-      localStorage.removeItem('authToken');
-
-      if (onLogout) {
-        onLogout();
-      }
-
-      router.push('/signin');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      alert('Ocorreu um erro ao fazer logout. Tente novamente.');
-    }
-  };
-
   return (
-    <div className="bg-white mt-4 rounded-lg shadow p-4 w-11/12 flex flex-col items-center">
-      <div className="relative w-52 h-52 bg-blue-100 rounded-full flex items-center justify-center">
+    <div className="bg-white  rounded-lg shadow p-7 w-full flex flex-col items-center">
+      <div className="relative w-48 h-48 bg-blue-100 rounded-full flex items-center justify-center">
         {/* Números do relógio */}
         {CLOCK_NUMBERS.map(({ number, left, top }) => (
           <span
@@ -80,7 +70,7 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
             style={{
               left: `${left}%`,
               top: `${top}%`,
-              transform: 'translate(-50%, -50%)'
+              transform: "translate(-50%, -50%)",
             }}
           >
             {number}
@@ -94,7 +84,7 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
           style={{
             transform: "rotate(0deg)",
             bottom: "50%",
-            left: "calc(50% - 1.5px)"
+            left: "calc(50% - 1.5px)",
           }}
         ></div>
         <div
@@ -103,7 +93,7 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
           style={{
             transform: "rotate(0deg)",
             bottom: "50%",
-            left: "calc(50% - 1px)"
+            left: "calc(50% - 1px)",
           }}
         ></div>
         <div
@@ -112,7 +102,7 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
           style={{
             transform: "rotate(0deg)",
             bottom: "50%",
-            left: "50%"
+            left: "50%",
           }}
         ></div>
         {/* Centro do relógio */}
@@ -122,7 +112,7 @@ const ClockSection = ({ greeting, onLogout }: ClockSectionProps) => {
 
       {/* Botão de logout */}
       <button
-        onClick={handleLogout}
+        onClick={signOut}
         className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm"
       >
         Sair

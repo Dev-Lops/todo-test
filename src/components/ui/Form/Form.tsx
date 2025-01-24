@@ -1,10 +1,5 @@
-import { ReactNode } from 'react';
-import {
-  UseFormReturn,
-  FieldValues,
-  SubmitHandler,
-  FormProvider,
-} from 'react-hook-form';
+import { ReactNode } from "react";
+import { UseFormReturn, FieldValues, FormProvider } from "react-hook-form";
 
 interface FormProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -26,7 +21,7 @@ export function Form<T extends FieldValues>({
           try {
             await onSubmit(data);
           } catch (error) {
-            console.error('Form submission error:', error);
+            console.error("Form submission error:", error);
           }
         })}
         className={className}
@@ -35,4 +30,4 @@ export function Form<T extends FieldValues>({
       </form>
     </FormProvider>
   );
-} 
+}

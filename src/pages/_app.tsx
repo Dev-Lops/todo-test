@@ -2,7 +2,7 @@ import "@/styles/globals.css";
 import { AppProps } from 'next/app';
 import { Poppins } from "next/font/google";
 import { AuthProvider } from '../contexts/AuthContext';
-import { NotificationProvider } from '../contexts/NotificationContext';
+
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -12,11 +12,9 @@ const poppins = Poppins({
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
-      <NotificationProvider>
         <main className={poppins.className}>
           <Component {...pageProps} />
         </main>
-      </NotificationProvider>
     </AuthProvider>
   );
 }

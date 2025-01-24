@@ -1,60 +1,45 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { verifyJWT } from '../../../lib/jwt';
-import { prisma } from '../../../lib/prisma';
+import { jwtUtils } from "@/lib/jwt";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
+import { JwtPayload } from "jsonwebtoken"; // Importe o tipo JwtPayload
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  setNoCacheHeaders(res);
+  const authHeader = req.headers.authorization;
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Token não fornecido" });
   }
 
-  const token = req.cookies.authToken;
-
-  if (!token) {
-    return res.status(401).json({ message: 'Não autorizado' });
-  }
-
-  let payload;
-  try {
-    payload = verifyJWT(token);
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-    return res.status(401).json({ message: 'Token inválido ou expirado' });
-  }
-
-  if (!payload) {
-    return res.status(401).json({ message: 'Token inválido ou expirado' });
-  }
+  const token = authHeader.split(" ")[1];
 
   try {
-    const user = await getUserById(payload.userId);
+    const decoded = jwtUtils.verifyToken(token);
 
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+    // Verifica se `decoded` é do tipo `JwtPayload`
+    if (typeof decoded !== "object" || !("userId" in decoded)) {
+      return res.status(401).json({ message: "Token inválido" });
     }
 
-    return res.status(200).json(user);
+    const userId = (decoded as JwtPayload).userId; // Casting para JwtPayload
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
   } catch (error) {
-    console.error('Error in /api/auth/me:', error);
-    return res.status(500).json({ message: 'Erro interno do servidor' });
+    console.error("Erro ao verificar token:", error);
+    return res.status(401).json({ message: "Token inválido ou expirado" });
   }
-}
-
-// Função auxiliar para buscar o usuário
-async function getUserById(userId: string) {
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, name: true, email: true },
-  });
-}
-
-// Define headers para evitar cache
-function setNoCacheHeaders(res: NextApiResponse) {
-  res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
 }

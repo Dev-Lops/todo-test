@@ -1,18 +1,39 @@
-import axios from 'axios';
+import axios from "axios";
 
 export const api = axios.create({
-  baseURL: '/api',
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "/api",
 });
 
-// Interceptor para tratamento de erros
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+export class AuthService {
+  static async signIn(email: string, password: string) {
+    const response = await api.post("/auth/signin", { email, password });
+    localStorage.setItem("authToken", response.data.token);
+    return response.data.user;
   }
-  return config;
-});
+
+  static async getProfile() {
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("Usuário não autenticado");
+
+    const response = await api.get("/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return response.data;
+  }
+
+  static logout() {
+    localStorage.removeItem("authToken");
+  }
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      AuthService.logout(); // Remove o token
+      window.location.href = "/"; // Redireciona para login
+    }
+    return Promise.reject(error);
+  }
+);

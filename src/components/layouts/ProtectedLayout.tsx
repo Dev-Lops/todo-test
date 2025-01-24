@@ -1,38 +1,36 @@
-import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '../../contexts/AuthContext';
-import { Header } from '../ui/Header/Header';
-import { Sidebar } from '../ui/Sidebar/Sidebar';
-import { LoadingSpinner } from '../ui/LoadingSpinner/LoadingSpinner';
+"use client";
+
+import React, { ReactNode } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/router";
+import { Header } from "@/components/ui/Header/Header";
+import { Sidebar } from "@/components/ui/Sidebar/Sidebar";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner/LoadingSpinner";
 
 interface ProtectedLayoutProps {
   children: ReactNode;
 }
 
-// Lista de rotas públicas
-const PUBLIC_ROUTES = ['/signin', '/signup'];
-
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth(); // Usando contexto de autenticação
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && !PUBLIC_ROUTES.includes(router.pathname)) {
-      router.replace('/signin'); // Redireciona para a página de login
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  // Enquanto verifica a autenticação, mostra o spinner
+  // Exibe um spinner de carregamento enquanto verifica autenticação
   if (isLoading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
-  // Para rotas públicas, renderiza o conteúdo diretamente
-  if (PUBLIC_ROUTES.includes(router.pathname)) {
-    return <>{children}</>;
+  // Redireciona para o login se o usuário não estiver autenticado
+  if (!isAuthenticated) {
+    router.replace("/");
+    return null; // Evita renderizar enquanto redireciona
   }
 
-  // Para rotas protegidas, renderiza o layout principal
+  // Renderiza o layout principal
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />

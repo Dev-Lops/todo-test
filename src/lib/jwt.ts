@@ -1,24 +1,18 @@
-import jwt from 'jsonwebtoken';
+import { TokenPayloadSchema } from "@/schemas/token/TokenPayloadSchema";
+import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET não está definido');
-}
+export const jwtUtils = {
+  signToken: (payload: object, expiresIn = "7d") => {
+    const validation = TokenPayloadSchema.safeParse(payload);
+    if (!validation.success) {
+      throw new Error("Payload inválido para o token JWT");
+    }
+    return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  },
 
-export interface JWTPayload {
-  userId: string;
-}
-
-export function verifyJWT(token: string): JWTPayload | null {
-  try {
-    const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
-
-export function signJWT(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-} 
+  verifyToken: (token: string) => {
+    return jwt.verify(token, JWT_SECRET);
+  },
+};

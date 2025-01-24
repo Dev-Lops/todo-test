@@ -1,90 +1,66 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '../../../lib/prisma';
-import { compare } from 'bcryptjs';
-import { sign } from 'jsonwebtoken';
-import { z } from 'zod';
+import { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
+import { compare } from "bcrypt";
+import { jwtUtils } from "@/lib/jwt";
 
-const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-if (!process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET não está definido');
-}
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== "POST") {
+    res.setHeader("Allow", ["POST"]);
+    return res.status(405).json({ message: "Método não permitido" });
+  }
+
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res
+      .status(400)
+      .json({ message: "Por favor, forneça email e senha" });
   }
 
   try {
-    const { email, password } = signInSchema.parse(req.body);
+    console.log("Recebendo email para login:", email);
 
+    // Verifica se o usuário existe
     const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        password: true,
-      },
+      where: { email: email.trim().toLowerCase() }, // Normaliza o email
     });
 
     if (!user) {
-      return res.status(401).json({ message: 'Email ou senha inválidos' });
+      console.error("Usuário não encontrado:", email);
+      return res.status(404).json({ message: "Usuário não encontrado." });
     }
 
-    const passwordMatch = await compare(password, user.password);
+    console.log("Usuário encontrado:", user);
 
-    if (!passwordMatch) {
-      return res.status(401).json({ message: 'Email ou senha inválidos' });
+    // Valida a senha
+    const isPasswordValid = await compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.error("Senha inválida para o usuário:", email);
+      return res.status(401).json({ message: "Senha inválida." });
     }
 
-    const token = sign(
-      { userId: user.id },
-      process.env.JWT_SECRET || 'default-secret',
-      { expiresIn: '7d' }
-    );
+    console.log("Senha válida para o usuário:", email);
 
-    // Criar uma nova sessão no banco
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+    // Gera o token JWT
+    const payload = {
+      userId: user.id,
+      email: user.email,
+    };
 
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        expiresAt,
-      },
-    });
+    const token = jwtUtils.signToken(payload);
+    console.log("Token gerado:", token);
 
-    // Configuração do cookie
-    res.setHeader('Set-Cookie', [
-      `authToken=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 7}`,
-    ]);
-
-    // Remove o password do objeto user antes de retornar
-    const { password: _, ...userWithoutPassword } = user;
-
-    return res.status(200).json({
-      user: userWithoutPassword,
+    res.status(200).json({
+      user: { id: user.id, name: user.name, email: user.email },
+      token,
     });
   } catch (error) {
-    console.error('Signin error:', error);
-
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        message: 'Dados inválidos',
-        errors: error.errors
-      });
-    }
-
-    return res.status(500).json({
-      message: 'Erro interno do servidor',
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    console.error("Erro interno no servidor:", error);
+    res.status(500).json({ message: "Erro interno do servidor." });
   }
-} 
+}

@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { AuthService } from '../services/authService';
-import { useRouter } from 'next/router';
-import { SignInData } from '../schemas/auth.schema';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { AuthService } from "../services/authService";
+import { useRouter } from "next/router";
+import type { SignInData } from "@/schemas/auth/signInSchema";
+import type { SignUpData } from "@/schemas/auth/signUpSchema";
 
 interface User {
   id: string;
@@ -16,10 +23,13 @@ interface AuthContextData {
   isAuthenticated: boolean;
   isLoading: boolean;
   signIn: (data: SignInData) => Promise<void>;
-  signOut: () => Promise<void>;
+  signUp: (data: SignUpData) => Promise<void>;
+  signOut: () => void;
 }
 
-const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+export const AuthContext = createContext<AuthContextData>(
+  {} as AuthContextData
+);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -27,41 +37,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const authService = AuthService.getInstance();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (isLoading) {
-        try {
-          const userData = await authService.getProfile();
-          setUser(userData);
-        } catch (error) {
-          setUser(null);
-        } finally {
-          setIsLoading(false);
-        }
+  const checkAuth = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const userData = await AuthService.getProfile();
+      setUser(userData);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Erro ao verificar autenticação:", error.message);
+      } else {
+        console.error("Erro ao verificar autenticação:", error);
       }
-    };
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
     checkAuth();
-  }, []); // Executa apenas uma vez na montagem inicial
+  }, [checkAuth]);
 
   const signIn = async (credentials: SignInData) => {
     try {
-      const response = await authService.signIn(credentials);
-      setUser(response.user);
-      router.replace('/dashboard');
+      const response = await authService.signIn(credentials); // Retorna token e user
+      localStorage.setItem("authToken", response.token); // Salva o token
+      setUser(response.user); // Salva o usuário no estado
+      router.replace("/dashboard"); // Redireciona
     } catch (error) {
-      throw error;
+      console.error("Erro ao fazer login:", error);
+      throw new Error("Credenciais inválidas ou problema no servidor");
     }
   };
 
-  const signOut = async () => {
+  const signUp = async (data: SignUpData) => {
     try {
-      await authService.signOut();
-      setUser(null);
-      router.replace('/signin');
+      await authService.signUp(data);
+      router.replace("/signIn");
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Erro ao criar conta:", error);
+      throw new Error("Erro ao criar conta ou problema no servidor");
     }
+  };
+
+  const signOut = () => {
+    localStorage.removeItem("authToken");
+    setUser(null);
+    router.replace("/");
   };
 
   return (
@@ -71,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         signIn,
+        signUp,
         signOut,
       }}
     >
@@ -79,4 +102,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => useContext(AuthContext);
