@@ -1,66 +1,40 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
-import { compare } from "bcrypt";
 import { jwtUtils } from "@/lib/jwt";
-
+import bcrypt from "bcryptjs";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).json({ message: "Método não permitido" });
+    return res
+      .setHeader("Allow", ["POST"])
+      .status(405)
+      .json({ message: "Método não permitido." });
   }
 
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Por favor, forneça email e senha" });
+    return res.status(400).json({ message: "Email e senha são obrigatórios." });
   }
 
   try {
-    console.log("Recebendo email para login:", email);
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    // Verifica se o usuário existe
-    const user = await prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() }, // Normaliza o email
-    });
-
-    if (!user) {
-      console.error("Usuário não encontrado:", email);
-      return res.status(404).json({ message: "Usuário não encontrado." });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: "Credenciais inválidas." });
     }
 
-    console.log("Usuário encontrado:", user);
+    const token = jwtUtils.signToken({ userId: user.id, email: user.email });
 
-    // Valida a senha
-    const isPasswordValid = await compare(password, user.password);
-
-    if (!isPasswordValid) {
-      console.error("Senha inválida para o usuário:", email);
-      return res.status(401).json({ message: "Senha inválida." });
-    }
-
-    console.log("Senha válida para o usuário:", email);
-
-    // Gera o token JWT
-    const payload = {
-      userId: user.id,
-      email: user.email,
-    };
-
-    const token = jwtUtils.signToken(payload);
-    console.log("Token gerado:", token);
-
-    res.status(200).json({
-      user: { id: user.id, name: user.name, email: user.email },
+    return res.status(200).json({
       token,
+      user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (error) {
-    console.error("Erro interno no servidor:", error);
-    res.status(500).json({ message: "Erro interno do servidor." });
+    console.error("Erro ao fazer login:", error);
+    return res.status(500).json({ message: "Erro interno no servidor." });
   }
 }

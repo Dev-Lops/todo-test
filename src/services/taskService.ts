@@ -3,17 +3,30 @@ import type { Task } from "@/types/task";
 
 export class TaskService {
   static async getTasks(): Promise<Task[]> {
-    try {
-      const response = await api.get<Task[]>("/api/tasks");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      return []; // Retorna um array vazio como fallback
-    }
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("Token ausente.");
+
+    const response = await api.get<Task[]>("/api/tasks", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
   }
 
-  static async createTask(title: string, userId: string) {
-    const response = await api.post("/api/tasks", { title, userId });
+  static async createTask(title: string): Promise<Task> {
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("Token ausente.");
+
+    const response = await api.post<Task>(
+      "/api/tasks",
+      { title },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
     return response.data;
   }
 

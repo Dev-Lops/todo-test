@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/router";
 import { Header } from "@/components/ui/Header/Header";
@@ -12,10 +12,17 @@ interface ProtectedLayoutProps {
 }
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
-  const { isAuthenticated, isLoading } = useAuth(); // Usando contexto de autenticação
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Exibe um spinner de carregamento enquanto verifica autenticação
+  // Redireciona para a página de login caso o usuário não esteja autenticado
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/signIn");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  // Exibe um spinner enquanto a autenticação é verificada
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -24,10 +31,9 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     );
   }
 
-  // Redireciona para o login se o usuário não estiver autenticado
+  // Aguarda o redirecionamento ser processado antes de renderizar o layout principal
   if (!isAuthenticated) {
-    router.replace("/");
-    return null; // Evita renderizar enquanto redireciona
+    return null;
   }
 
   // Renderiza o layout principal

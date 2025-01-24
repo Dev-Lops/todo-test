@@ -32,7 +32,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       AuthService.logout(); // Remove o token
-      window.location.href = "/"; // Redireciona para login
+      window.location.href = "/signIn"; // Redireciona para login
     }
     return Promise.reject(error);
   }

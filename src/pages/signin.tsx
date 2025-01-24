@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { Form } from "../components/ui/Form/Form";
 import { FormField } from "../components/ui/Form/FormField";
 import { Button } from "../components/ui/Button/Button";
@@ -26,21 +26,24 @@ export default function SignIn() {
 
   const handleSubmit = async (data: SignInData) => {
     try {
-      await signIn(data);
-      setToast({ message: "Login bem-sucedido!", type: "success" });
-    } catch (error) {
-      setToast({
-        message: error instanceof Error ? error.message : "Erro ao fazer login",
-        type: "error",
-      });
-      form.setValue("password", ""); // Limpa o campo de senha
+      await signIn(data); // Tenta fazer login
+      // setToast({ message: "Login realizado com sucesso!", type: "success" });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Erro ao realizar o login. Por favor, tente novamente.";
+      setToast({ message: errorMessage, type: "error" });
+      form.setError("password", {
+        message: "Credenciais inválidas. Verifique seu email e senha.",
+      }); // Mostra erro no campo senha
     }
   };
 
   return (
     <>
       <Head>
-        <title>Entrar | App</title>
+        <title>Entrar | Minha Aplicação</title>
       </Head>
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="max-w-md w-full bg-white p-6 rounded-lg shadow-md">
@@ -53,12 +56,14 @@ export default function SignIn() {
               label="Email"
               type="email"
               placeholder="Digite seu email"
+              error={form.formState.errors.email?.message}
             />
             <FormField
               name="password"
               label="Senha"
               type="password"
               placeholder="Digite sua senha"
+              error={form.formState.errors.password?.message}
             />
             <Button
               type="submit"

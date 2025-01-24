@@ -19,42 +19,18 @@ export default function HomePage() {
   };
 
   return (
-    <div className="w-[500px] h-screen bg-gray-100 flex flex-col items-center justify-between m-auto ">
-      {/* Cabeçalho */}
-      <header className="w-full max-w-5xl mx-auto flex flex-col items-center justify-between p-4 bg-white shadow-md rounded-lg">
-        <h1 className="text-xl font-bold text-teal-600">Minha Aplicação</h1>
-        {isAuthenticated ? (
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">
-              Olá, {user?.name || "Usuário"}!
-            </span>
-            <button
-              onClick={handleLogout}
-              className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition"
-            >
-              Sair
-            </button>
-          </div>
-        ) : (
-          <Link href="/signIn">
-            <button className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition">
-              Entrar
-            </button>
-          </Link>
-        )}
-      </header>
-
+    <div className="w-[500px] h-screen flex flex-col items-center justify-between m-auto ">
       {/* Conteúdo principal */}
-      <main className="flex w-full max-w-5xl mx-auto mt-6">
+      <main className="flex w-full max-w-5xl mx-auto h-screen mt-6 justify-center text-justify ">
         {isAuthenticated ? (
-          <div className="bg-white p-6 rounded-lg shadow-md justify-center items-center">
-            <h2 className="text-2xl font-bold text-gray-800">
+          <div className="flex flex-col bg-white p-6  rounded-lg shadow-md justify-center items-center">
+            <h2 className="text-2xl font-bold text-gray-800 w-full text-center">
               Bem-vindo, {user?.name || "Usuário"}!
             </h2>
             <p className="text-gray-600 mt-2">
               Explore as funcionalidades da aplicação usando os links abaixo:
             </p>
-            <div className="mt-4 flex gap-4">
+            <div className="mt-4 flex gap-4 items-center justify-center">
               <Link href="/dashboard">
                 <button className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition">
                   Ir para o Dashboard
@@ -68,7 +44,7 @@ export default function HomePage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
             <h2 className="text-2xl font-bold text-gray-800">
               Bem-vindo à aplicação!
             </h2>

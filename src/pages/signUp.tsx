@@ -11,6 +11,7 @@ import { Toast } from "../components/ui/Toast/Toast";
 import Head from "next/head";
 import Link from "next/link";
 import { signUpSchema, type SignUpData } from "@/schemas/auth/signUpSchema";
+import { api } from "@/lib/api";
 
 export default function SignUp() {
   const { signUp } = useAuth();
@@ -24,16 +25,34 @@ export default function SignUp() {
     defaultValues: { name: "", email: "", password: "" },
   });
 
+  // Função para verificar se o email já existe
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    try {
+      const response = await api.post("/api/auth/check-email", { email });
+      return response.data.exists; // Retorna true se existir
+    } catch {
+      return false; // Considera que o email não existe se houver erro
+    }
+  };
+
   const handleSubmit = async (data: SignUpData) => {
     try {
+      // Verifica se o email já está em uso
+      const emailExists = await checkEmailExists(data.email);
+      if (emailExists) {
+        setToast({
+          message: "Este email já está em uso. Por favor, tente outro.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Realiza o cadastro
       await signUp(data);
+      setToast({ message: "Conta criada com sucesso!", type: "success" });
+    } catch (error: any) {
       setToast({
-        message: "Conta criada com sucesso! Redirecionando...",
-        type: "success",
-      });
-    } catch (error) {
-      setToast({
-        message: error instanceof Error ? error.message : "Erro ao criar conta",
+        message: error.response?.data?.message || "Erro ao criar conta.",
         type: "error",
       });
     }
@@ -50,24 +69,31 @@ export default function SignUp() {
             Criar Conta
           </h1>
           <Form form={form} onSubmit={handleSubmit}>
-            <FormField name="name" label="Nome" placeholder="Digite seu nome" />
+            <FormField
+              name="name"
+              label="Nome"
+              placeholder="Digite seu nome"
+              error={form.formState.errors.name?.message} // Mostra o erro de validação
+            />
             <FormField
               name="email"
               label="Email"
               placeholder="Digite seu email"
+              error={form.formState.errors.email?.message}
             />
             <FormField
               name="password"
               label="Senha"
               type="password"
               placeholder="Digite sua senha"
+              error={form.formState.errors.password?.message}
             />
             <Button
               type="submit"
-              disabled={form.formState.isSubmitting}
+              disabled={form.formState.isSubmitting || !form.watch("email")}
               className="w-full mt-5"
             >
-              {form.formState.isSubmitting ? "Cadastrando..." : "Cadastrar"}
+              {form.formState.isSubmitting ? "Criando conta..." : "Cadastrar"}
             </Button>
           </Form>
           <div className="mt-4 text-center">

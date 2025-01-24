@@ -1,7 +1,6 @@
+import { prisma } from "@/lib/prisma";
 import { jwtUtils } from "@/lib/jwt";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/prisma";
-import { JwtPayload } from "jsonwebtoken"; // Importe o tipo JwtPayload
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,7 +9,7 @@ export default async function handler(
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Token não fornecido" });
+    return res.status(401).json({ message: "Token não fornecido." });
   }
 
   const token = authHeader.split(" ")[1];
@@ -18,19 +17,16 @@ export default async function handler(
   try {
     const decoded = jwtUtils.verifyToken(token);
 
-    // Verifica se `decoded` é do tipo `JwtPayload`
     if (typeof decoded !== "object" || !("userId" in decoded)) {
-      return res.status(401).json({ message: "Token inválido" });
+      return res.status(401).json({ message: "Token inválido." });
     }
 
-    const userId = (decoded as JwtPayload).userId; // Casting para JwtPayload
-
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: decoded.userId },
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: "Usuário não encontrado." });
     }
 
     res.status(200).json({
@@ -40,6 +36,6 @@ export default async function handler(
     });
   } catch (error) {
     console.error("Erro ao verificar token:", error);
-    return res.status(401).json({ message: "Token inválido ou expirado" });
+    return res.status(401).json({ message: "Token inválido ou expirado." });
   }
 }

@@ -16,6 +16,7 @@ model User {
   created_at    DateTime  @default(now())
   Session       Session[]
   tasks         Task[]
+  Token         Token[]
 
   @@map("users")
 }
@@ -41,4 +42,16 @@ model Session {
   User      User     @relation(fields: [userId], references: [id])
 
   @@map("sessions")
+}
+
+model Token {
+  id        String   @id @default(cuid()) // ID único
+  userId    String // ID do usuário associado
+  token     String   @unique // O token JWT
+  createdAt DateTime @default(now()) // Quando o token foi criado
+  expiresAt DateTime // Quando o token expira
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("token")
 }

@@ -1,106 +1,73 @@
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/router";
+"use client";
 
-type SigninInput = {
-  email: string;
-  password: string;
-};
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "../contexts/AuthContext";
+import { signInSchema, type SignInData } from "@/schemas/auth/signInSchema";
+import { toast } from "react-toastify";
 
-export const SigninForm = () => {
+export default function SignIn() {
+  const { signIn } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SigninInput>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const router = useRouter();
+  } = useForm<SignInData>({
+    resolver: zodResolver(signInSchema),
+  });
 
-  const onSubmit: SubmitHandler<SigninInput> = async (data) => {
+  const onSubmit = async (data: SignInData) => {
     setIsLoading(true);
-    setErrorMessage(null);
-
-    const result = await signIn("credentials", {
-      redirect: false,
-      email: data.email,
-      password: data.password,
-    });
-
-    setIsLoading(false);
-
-    if (result?.ok) {
-      router.push(result.url || "/dashboard");
-    } else {
-      setErrorMessage(
-        result?.error || "Falha no login. Verifique suas credenciais."
-      );
+    try {
+      await signIn(data); // Delegamos o erro para o `AuthContext`
+    } catch {
+      // Aqui não é necessário lançar um erro ou exibir outro toast,
+      // porque o `AuthContext` já cuidou disso.
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col w-[380px] gap-6"
-    >
-      {/* Email */}
-      <div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-4 bg-white p-6 rounded-lg shadow-md w-96"
+      >
+        <h1 className="text-2xl font-bold text-center text-teal-600">Entrar</h1>
         <input
           type="email"
-          placeholder="Email"
-          className={`w-full px-3 py-4 rounded-lg placeholder:text-[#000] placeholder:text-[13px] font-poppins ${
-            errors.email ? "border-red-500" : "border-gray-300"
-          }`}
-          {...register("email", {
-            required: "O email é obrigatório.",
-            pattern: {
-              value: /^\S+@\S+\.\S+$/,
-              message: "Insira um email válido.",
-            },
-          })}
+          placeholder="Digite seu email"
+          {...register("email")}
+          className="w-full px-4 py-2 border rounded-lg"
         />
         {errors.email && (
-          <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
         )}
-      </div>
 
-      {/* Senha */}
-      <div>
         <input
           type="password"
-          placeholder="Password"
-          className={`w-full px-3 py-4 rounded-lg placeholder:text-[#000] placeholder:text-[13px] font-poppins ${
-            errors.password ? "border-red-500" : "border-gray-300"
-          }`}
-          {...register("password", {
-            required: "A senha é obrigatória.",
-            minLength: {
-              value: 6,
-              message: "A senha deve ter pelo menos 6 caracteres.",
-            },
-          })}
+          placeholder="Digite sua senha"
+          {...register("password")}
+          className="w-full px-4 py-2 border rounded-lg"
         />
         {errors.password && (
-          <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
         )}
-      </div>
 
-      {/* Mensagem de erro */}
-      {errorMessage && (
-        <p className="text-red-500 text-center mt-2">{errorMessage}</p>
-      )}
-
-      {/* Botão de Login */}
-      <button
-        type="submit"
-        className={`w-full bg-[#50C2C9] text-white px-3 py-4 rounded-lg font-poppins hover:bg-[#4db3bd] transition-colors ${
-          isLoading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-        disabled={isLoading}
-      >
-        {isLoading ? "Entrando..." : "Login"}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={isLoading}
+          className={`w-full py-2 bg-teal-600 text-white rounded-lg ${
+            isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          {isLoading ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
+    </div>
   );
-};
+}

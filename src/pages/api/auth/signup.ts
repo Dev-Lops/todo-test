@@ -1,6 +1,6 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
-import { hash } from "bcrypt";
+import { hash } from "bcryptjs"; // Caso você use bcrypt
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,26 +14,23 @@ export default async function handler(
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Por favor, forneça nome, email e senha" });
+    return res.status(400).json({ message: "Dados inválidos" });
   }
 
   try {
-    // Verifica se o usuário já existe
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return res.status(409).json({ message: "Email já está em uso" });
+      return res
+        .status(409)
+        .json({ message: "E-mail já está em uso. Tente outro." });
     }
 
-    // Hash da senha
-    const hashedPassword = await hash(password, 10);
+    const hashedPassword = await hash(password, 10); // Criptografa a senha
 
-    // Criação do usuário
-    const newUser = await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email,
@@ -41,13 +38,11 @@ export default async function handler(
       },
     });
 
-    res.status(201).json({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-    });
+    return res
+      .status(201)
+      .json({ message: "Usuário criado com sucesso!", user });
   } catch (error) {
-    console.error("Erro ao criar usuário:", error);
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error("Erro ao criar conta:", error);
+    return res.status(500).json({ message: "Erro interno do servidor" });
   }
 }
